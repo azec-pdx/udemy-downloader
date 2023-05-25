@@ -130,3 +130,7 @@ selenium_data/
 config.dev.toml
 temp/
 *.exe
+dependencies/
+DOWNLOAD__INSTRUCTIONS.md
+DOWNLOADS_SCRATCHPAD.md
+getwvkeys_udemy5.1.py

@@ -196,6 +196,21 @@ or
 
 Then try disabling ipv6 in aria2 using the `--disable-ipv6` option
 
+# Batch compress to H.265
+
+By default, unless explicitly specified downloads will not use H.265 encoding. This is good because 
+it leads to speeding things up in the entire processing pipeline and prevents expiration of
+sessions which would occur while waiting on `ffmpeg` to encode H.264 (default format) videos to H.265 (if H.265 enc. was used after each video lecture download).
+
+To allow better compression for offline storage, after course is downloaded in H.264, you can use below to bulk-process course videos to H.265:
+
+```sh
+python batch_compress_h264_to_h265.py \
+  --recursive \
+  --file-ext=mp4 \
+  out_dir/<YOUR_COURSE_DIRECTORY>
+```
+
 # Support
 
 if you want help using the program, join my [Discord](https://discord.gg/tMzrSxQ) server or use [GitHub Issues](https://github.com/Puyodead1/udemy-downloader/issues)
