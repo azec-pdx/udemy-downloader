@@ -132,3 +132,8 @@ temp/
 *.exe
 # Docker Compose output volume
 output/
+
+dependencies/
+DOWNLOAD__INSTRUCTIONS.md
+DOWNLOADS_SCRATCHPAD.md
+getwvkeys_udemy5.1.py
