@@ -696,13 +696,13 @@ class Udemy:
                 f.write(r.content)
 
             logger.debug(f"Getting MPD from URL: {url}")
-            ytdl = yt_dlp.YoutubeDL(params=YDL_OPTIONS, auto_init=True)
-            results = ytdl.extract_info(mpd_path.as_uri(),
-                                        download=False,
-                                        extra_info=None,
-                                        process=False,
-                                        force_generic_extractor=True,
-                                        ie_key='Generic')
+            with yt_dlp.YoutubeDL(params=YDL_OPTIONS.copy(), auto_init=True) as ytdl:
+                results = ytdl.extract_info(pd_path.as_uri(),
+                                            download=False,
+                                            extra_info=None,
+                                            process=False,
+                                            force_generic_extractor=True,
+                                            ie_key='Generic')
             # DEBUG
             # with open('results.json', 'a') as the_file:
             #     results_json = json.dumps(results, indent=4)
@@ -1466,21 +1466,24 @@ def handle_segments(url, format_id, video_title, output_path, lecture_file_name,
     video_filepath_dec = lecture_file_name + ".decrypted.mp4"
     audio_filepath_dec = lecture_file_name + ".decrypted.m4a"
     logger.info("> Downloading Lecture Tracks...")
+    
+    # logger.debug("YDL_OPTIONS: " + str(YDL_OPTIONS))
+    
     args = [
         "yt-dlp",
         "--enable-file-urls",
-        # "--add-headers", f"accept:{YDL_OPTIONS['http_headers'].get('accept')}",
-        # "--add-headers", f"accept-encoding:{YDL_OPTIONS['http_headers'].get('accept-encoding')}",
-        # "--add-headers", f"accept-language:{YDL_OPTIONS['http_headers'].get('accept-language')}",
-        # "--add-headers", f"cookie:{YDL_OPTIONS['http_headers'].get('cookie')}",
-        # "--add-headers", f"referer:{YDL_OPTIONS['http_headers'].get('referer')}",
-        # "--add-headers", f"user-agent:{YDL_OPTIONS['http_headers'].get('user-agent')}",
-        # "--add-headers", f"sec-ch-ua:{YDL_OPTIONS['http_headers'].get('sec-ch-ua')}",
-        # "--add-headers", f"sec-ch-ua-mobile:{YDL_OPTIONS['http_headers'].get('sec-ch-ua-mobile')}",
-        # "--add-headers", f"sec-ch-ua-platform:{YDL_OPTIONS['http_headers'].get('sec-ch-ua-platform')}",
-        # "--add-headers", f"sec-fetch-dest:{YDL_OPTIONS['http_headers'].get('sec-fetch-dest')}",
-        # "--add-headers", f"sec-fetch-mode:{YDL_OPTIONS['http_headers'].get('sec-fetch-mode')}",
-        # "--add-headers", f"sec-fetch-site:{YDL_OPTIONS['http_headers'].get('sec-fetch-site')}",
+        "--add-headers", f'accept:{YDL_OPTIONS.get("http_headers", {}).get("Accept", None)}',
+        "--add-headers", f'accept-encoding:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Encoding", None)}',
+        "--add-headers", f'accept-language:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Language", None)}',
+        "--add-headers", f'cookie:{YDL_OPTIONS.get("http_headers", {}).get("Cookie", None)}',
+        #"--add-headers", f'referer:{YDL_OPTIONS.get("http_headers", {}).get("Referer")}',
+        "--add-headers", f'user-agent:{YDL_OPTIONS.get("http_headers", {}).get("User-Agent", None)}',
+        "--add-headers", f'sec-ch-ua:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua", None)}',
+        "--add-headers", f'sec-ch-ua-mobile:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua-Mobile", None)}',
+        "--add-headers", f'sec-ch-ua-platform:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua-Platform", None)}',
+        "--add-headers", f'sec-fetch-dest:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Dest", None)}',
+        "--add-headers", f'sec-fetch-mode:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Mode", None)}',
+        "--add-headers", f'sec-fetch-site:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Site", None)}',
         "--cookies-from-browser",
         "chrome",
         "--use-extractors",
@@ -1500,7 +1503,9 @@ def handle_segments(url, format_id, video_title, output_path, lecture_file_name,
         format_id,
         f"{url}",
     ]
-    logger.debug(f"Downloading: {url}, with format ID: {format_id}")
+    # logger.debug("yt-dlp command:\n")
+    # logger.debug(f"{args}")
+    # logger.debug(f"Downloading: {url}, with format ID: {format_id}")
     if disable_ipv6:
         args.append("--downloader-args")
         args.append('aria2c:"--disable-ipv6"')
@@ -1518,14 +1523,14 @@ def handle_segments(url, format_id, video_title, output_path, lecture_file_name,
         video_kid = extract_kid(video_filepath_enc)
         logger.info("KID for video file is: " + video_kid)
     except Exception:
-        logger.exception(f"Error extracting video kid")
+        logger.exception("Error extracting video kid")
         return
 
     try:
         audio_kid = extract_kid(audio_filepath_enc)
         logger.info("KID for audio file is: " + audio_kid)
     except Exception:
-        logger.exception(f"Error extracting audio kid")
+        logger.exception("Error extracting audio kid")
         return
 
     try:
@@ -1698,18 +1703,18 @@ def process_lecture(lecture, lecture_path, lecture_file_name, chapter_dir):
                         temp_filepath = lecture_path.replace(".mp4", ".%(ext)s")
                         cmd = [
                             "yt-dlp",
-                             # "--add-headers", f"accept:{YDL_OPTIONS['http_headers'].get('accept')}",
-                            # "--add-headers", f"accept-encoding:{YDL_OPTIONS['http_headers'].get('accept-encoding')}",
-                            # "--add-headers", f"accept-language:{YDL_OPTIONS['http_headers'].get('accept-language')}",
-                            # "--add-headers", f"cookie:{YDL_OPTIONS['http_headers'].get('cookie')}",
-                            # "--add-headers", f"referer:{YDL_OPTIONS['http_headers'].get('referer')}",
-                            # "--add-headers", f"user-agent:{YDL_OPTIONS['http_headers'].get('user-agent')}",
-                            # "--add-headers", f"sec-ch-ua:{YDL_OPTIONS['http_headers'].get('sec-ch-ua')}",
-                            # "--add-headers", f"sec-ch-ua-mobile:{YDL_OPTIONS['http_headers'].get('sec-ch-ua-mobile')}",
-                            # "--add-headers", f"sec-ch-ua-platform:{YDL_OPTIONS['http_headers'].get('sec-ch-ua-platform')}",
-                            # "--add-headers", f"sec-fetch-dest:{YDL_OPTIONS['http_headers'].get('sec-fetch-dest')}",
-                            # "--add-headers", f"sec-fetch-mode:{YDL_OPTIONS['http_headers'].get('sec-fetch-mode')}",
-                            # "--add-headers", f"sec-fetch-site:{YDL_OPTIONS['http_headers'].get('sec-fetch-site')}",
+                            "--add-headers", f'accept:{YDL_OPTIONS.get("http_headers", {}).get("Accept", None)}',
+                            "--add-headers", f'accept-encoding:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Encoding", None)}',
+                            "--add-headers", f'accept-language:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Language", None)}',
+                            "--add-headers", f'cookie:{YDL_OPTIONS.get("http_headers", {}).get("Cookie", None)}',
+                            #"--add-headers", f'referer:{YDL_OPTIONS.get("http_headers", {}).get("Referer")}',
+                            "--add-headers", f'user-agent:{YDL_OPTIONS.get("http_headers", {}).get("User-Agent", None)}',
+                            "--add-headers", f'sec-ch-ua:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua", None)}',
+                            "--add-headers", f'sec-ch-ua-mobile:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua-Mobile", None)}',
+                            "--add-headers", f'sec-ch-ua-platform:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua-Platform", None)}',
+                            "--add-headers", f'sec-fetch-dest:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Dest", None)}',
+                            "--add-headers", f'sec-fetch-mode:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Mode", None)}',
+                            "--add-headers", f'sec-fetch-site:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Site", None)}',
                             "--cookies-from-browser",
                             "chrome",
                             "--use-extractors",
