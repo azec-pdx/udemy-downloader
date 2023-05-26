@@ -8,12 +8,15 @@ from tqdm import tqdm
 @click.argument('directory', type=click.Path(exists=True))
 @click.option('--recursive', is_flag=True, help='Recursive')
 @click.option('--file-ext', help='File format to process')
-def main(directory, file_ext='mp4', recursive=False):
+@click.option('--crf', help='CRF (Constant Rate Factor) for x265. Allowed values in range 0-51. For more info please see https://slhck.info/video/2017/02/24/crf-guide.html')
+def main(directory, file_ext='mp4', recursive=False, crf=28):
     """ Compress h264 video files in a directory using libx265 codec with crf=28
     Args:
          directory: the directory to scan for video files
          file_ext: the file extension to consider for conversion
          recursive: whether to search directory or all its contents
+         crf: Constant Rate Factor (CRF). Lower values would result in better quality, at the expense of higher file sizes.
+                Higher values mean more compression, but at some point you will notice the quality degradation.
     """
 
     if recursive:
@@ -47,7 +50,7 @@ def main(directory, file_ext='mp4', recursive=False):
 
     for fp in tqdm(files_to_process, desc='Converting files', unit='videos'):
         new_fp = fp.parent / f'temp_ffmpeg.mp4'
-        convert_cmd = f'ffmpeg -i "{fp}" -map_metadata 0 -vcodec libx265 -crf 28 "{new_fp}"'
+        convert_cmd = f'ffmpeg -i "{fp}" -map_metadata 0 -vcodec libx265 -crf "{crf}" "{new_fp}"'
         conversion_return_code = call(convert_cmd, shell=True)
         if conversion_return_code == 0:
             call(f'touch -r "{fp}" "{new_fp}"', shell=True)
