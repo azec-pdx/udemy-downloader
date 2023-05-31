@@ -428,7 +428,7 @@ class Udemy:
             sys.exit(1)
         else:
             return resp.get("results")
-    
+
     def _get_elem_value_or_none(self, elem, key):
         return elem[key] if elem and key in elem else "(None)"
 
@@ -443,9 +443,9 @@ class Udemy:
         if is_only_one and is_coding_assignment:
             assignment = quiz_json[0]
             prompt = assignment["prompt"]
-            
+
             resp["_type"] = assignment["assessment_type"]
-            
+
             resp["contents"] = {
                 "instructions": self._get_elem_value_or_none(prompt, "instructions"),
                 "tests": self._get_elem_value_or_none(prompt, "test_files"),
@@ -458,7 +458,7 @@ class Udemy:
         else: # Normal quiz
             resp["_type"] = "normal-quiz"
             resp["contents"] = quiz_json
-        
+
         return resp
 
     def _extract_supplementary_assets(self, supp_assets, lecture_counter):
@@ -697,7 +697,7 @@ class Udemy:
 
             logger.debug(f"Getting MPD from URL: {url}")
             with yt_dlp.YoutubeDL(params=YDL_OPTIONS.copy(), auto_init=True) as ytdl:
-                results = ytdl.extract_info(pd_path.as_uri(),
+                results = ytdl.extract_info(mpd_path.as_uri(),
                                             download=False,
                                             extra_info=None,
                                             process=False,
@@ -1472,6 +1472,9 @@ def handle_segments(url, format_id, video_title, output_path, lecture_file_name,
     args = [
         "yt-dlp",
         "--enable-file-urls",
+        "--quiet",  # "--no-quiet",
+        # "--verbose",
+        "--no-warnings",
         "--add-headers", f'accept:{YDL_OPTIONS.get("http_headers", {}).get("Accept", None)}',
         "--add-headers", f'accept-encoding:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Encoding", None)}',
         "--add-headers", f'accept-language:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Language", None)}',
@@ -1703,6 +1706,9 @@ def process_lecture(lecture, lecture_path, lecture_file_name, chapter_dir):
                         temp_filepath = lecture_path.replace(".mp4", ".%(ext)s")
                         cmd = [
                             "yt-dlp",
+                            "--quiet",  # "--no-quiet",
+                            # "--verbose",
+                            "--no-warnings",
                             "--add-headers", f'accept:{YDL_OPTIONS.get("http_headers", {}).get("Accept", None)}',
                             "--add-headers", f'accept-encoding:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Encoding", None)}',
                             "--add-headers", f'accept-language:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Language", None)}',
