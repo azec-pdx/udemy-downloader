@@ -18,7 +18,6 @@ def main(directory, file_ext='mp4', recursive=False, crf=28):
          crf: Constant Rate Factor (CRF). Lower values would result in better quality, at the expense of higher file sizes.
                 Higher values mean more compression, but at some point you will notice the quality degradation.
     """
-
     if recursive:
         video_files = [
             fp.absolute() for fp in Path(directory).rglob(f'*.{file_ext}')
@@ -50,7 +49,7 @@ def main(directory, file_ext='mp4', recursive=False, crf=28):
 
     for fp in tqdm(files_to_process, desc='Converting files', unit='videos'):
         new_fp = fp.parent / f'temp_ffmpeg.mp4'
-        convert_cmd = f'ffmpeg -i "{fp}" -map_metadata 0 -vcodec libx265 -crf "{crf}" "{new_fp}"'
+        convert_cmd = f'ffmpeg -i "{fp}" -map_metadata 0 -c:v libx265 -c:a copy -tag:v hvc1 -crf "{crf}" "{new_fp}"'
         conversion_return_code = call(convert_cmd, shell=True)
         if conversion_return_code == 0:
             call(f'touch -r "{fp}" "{new_fp}"', shell=True)
