@@ -137,3 +137,6 @@ dependencies/
 DOWNLOAD__INSTRUCTIONS.md
 DOWNLOADS_SCRATCHPAD.md
 getwvkeys_udemy5.1.py
+
+# MacOS nonsense
+.DS_Store
