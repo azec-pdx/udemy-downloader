@@ -19,6 +19,32 @@ MY_COURSES_URL = "https://{portal_name}.udemy.com/api-2.0/users/me/subscribed-co
 COLLECTION_URL = "https://{portal_name}.udemy.com/api-2.0/users/me/subscribed-courses-collections/?collection_has_courses=True&course_limit=20&fields[course]=last_accessed_time,title,published_title&fields[user_has_subscribed_courses_collection]=@all&page=1&page_size=1000"
 QUIZ_URL = "https://{portal_name}.udemy.com/api-2.0/quizzes/{quiz_id}/assessments/?version=1&page_size=250&fields[assessment]=id,assessment_type,prompt,correct_response,section,question_plain,related_lectures"
 
+
+YDL_OPTIONS = {
+    "quiet": True,
+    "verbose": False,
+    "no_warnings": True,
+    "enable_file_urls": True,
+    "allow_unplayable_formats": True,
+    "http_headers": {
+        "Accept": "*/*",
+        "Accept-Encoding": "gzip, deflate, br",
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cookie': '',
+        # 'Referer': '',
+        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': 'macOS',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    },
+    "cookiesfrombrowser": ("chrome", ),
+    "legacyserverconnect": True
+}
+
+
 HOME_DIR = os.getcwd()
 SAVED_DIR = os.path.join(os.getcwd(), "saved")
 KEY_FILE_PATH = os.path.join(os.getcwd(), "keyfile.json")

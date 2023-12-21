@@ -391,7 +391,7 @@ class Udemy:
             sys.exit(1)
         else:
             return resp.get("results")
-    
+
     def _get_elem_value_or_none(self, elem, key):
         return elem[key] if elem and key in elem else "(None)"
 
@@ -406,9 +406,9 @@ class Udemy:
         if is_only_one and is_coding_assignment:
             assignment = quiz_json[0]
             prompt = assignment["prompt"]
-            
+
             resp["_type"] = assignment["assessment_type"]
-            
+
             resp["contents"] = {
                 "instructions": self._get_elem_value_or_none(prompt, "instructions"),
                 "tests": self._get_elem_value_or_none(prompt, "test_files"),
@@ -421,7 +421,7 @@ class Udemy:
         else: # Normal quiz
             resp["_type"] = "normal-quiz"
             resp["contents"] = quiz_json
-        
+
         return resp
 
     def _extract_supplementary_assets(self, supp_assets, lecture_counter):
@@ -658,40 +658,69 @@ class Udemy:
                 r.raise_for_status()
                 f.write(r.content)
 
-            ytdl = yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "allow_unplayable_formats": True, "enable_file_urls": True})
-            results = ytdl.extract_info(mpd_path.as_uri(), download=False, force_generic_extractor=True)
-            seen = set()
-            formats = results.get("formats")
+            logger.debug(f"Getting MPD from URL: {url}")
+            with yt_dlp.YoutubeDL(params=YDL_OPTIONS.copy(), auto_init=True) as ytdl:
+                results = ytdl.extract_info(mpd_path.as_uri(),
+                                            download=False,
+                                            extra_info=None,
+                                            process=False,
+                                            force_generic_extractor=True,
+                                            ie_key='Generic')
+            # DEBUG
+            # with open('results.json', 'a') as the_file:
+            #     results_json = json.dumps(results, indent=4)
+            #     the_file.write(f'{results_json}')
 
-            format_id = results.get("format_id")
-            best_audio_format_id = format_id.split("+")[1]
-            # I forget what this was for
-            # best_audio = next((x for x in formats
-            #                    if x.get("format_id") == best_audio_format_id),
-            #                   None)
+            formats = results.get("formats")
+            # audio
+            best_audio_format_id_and_asr = ()  # (id, asr)
+            logger.debug("Audio formats found:")
+            for f in formats:
+                if "audio" in f.get("format_note"):
+                    # is an audio stream
+                    logger.debug(
+                        f"audio format: {f.get('format_id')}, {f.get('ext')}, {f.get('tbr')}, {f.get('asr')}, {f.get('acodec')}"
+                    )
+                    format_id = f.get("format_id")
+                    asr = f.get("asr")
+                    if (not best_audio_format_id_and_asr) or (
+                            best_audio_format_id_and_asr
+                            and asr > best_audio_format_id_and_asr[1]):
+                        best_audio_format_id_and_asr = (format_id, asr)
+                else:
+                    # Not an audio format
+                    logger.debug(
+                        f"skipping non-audio format: {f.get('format_id')}")
+                    continue
+
+            # video
+            seen = set()
+            logger.debug("Video formats found:")
             for f in formats:
                 if "video" in f.get("format_note"):
                     # is a video stream
+                    logger.debug(
+                        f"video format: {f.get('format_id')}, {f.get('ext')}, {f.get('tbr')}, {f.get('vcodec')}, {f.get('width')}(w)x{f.get('height')}(h)"
+                    )
                     format_id = f.get("format_id")
                     extension = f.get("ext")
                     height = f.get("height")
                     width = f.get("width")
-
                     if height and height not in seen:
                         seen.add(height)
-                        _temp.append(
-                            {
-                                "type": "dash",
-                                "height": str(height),
-                                "width": str(width),
-                                "format_id": f"{format_id},{best_audio_format_id}",
-                                "extension": extension,
-                                "download_url": f.get("manifest_url"),
-                            }
-                        )
+                        _temp.append({
+                            "type": "dash",
+                            "height": str(height),
+                            "width": str(width),
+                            "format_id":
+                                f"{format_id},{best_audio_format_id_and_asr[0]}",
+                            "extension": extension,
+                            "download_url": f.get("manifest_url"),
+                        })
                 else:
-                    # unknown format type
-                    # logger.debug(f"Unknown format type : {f}")
+                    # Not a video format
+                    logger.debug(
+                        f"skipping non-video format: {f.get('format_id')}")
                     continue
         except Exception:
             logger.exception(f"Error fetching MPD streams")
@@ -1262,24 +1291,28 @@ def mux_process(video_title, video_filepath, audio_filepath, output_path):
     """
     @author Jayapraveen
     """
-    codec = "hevc_nvenc" if use_nvenc else "libx265"
+    if use_h265:
+        codec = "hevc_nvenc" if use_nvenc else "libx265"
+    else:
+        codec = "libx264"
     transcode = "-hwaccel cuda -hwaccel_output_format cuda" if use_nvenc else []
     if os.name == "nt":
         if use_h265:
-            command = 'ffmpeg {} -y -i "{}" -i "{}" -c:v {} -vtag hvc1 -crf {} -preset {} -c:a copy -fflags +bitexact -map_metadata -1 -metadata title="{}" "{}"'.format(
-                transcode, video_filepath, audio_filepath, codec, h265_crf, h265_preset, video_title, output_path
-            )
+            command = 'ffmpeg {} -y -i "{}" -i "{}" -c:v {} -crf {} -preset {} -c:a copy -fflags +bitexact -map_metadata -1 -metadata title="{}" "{}"'.format(
+                transcode, video_filepath, audio_filepath, codec, h265_crf, h265_preset, video_title, output_path)
         else:
-            command = 'ffmpeg -y -i "{}" -i "{}" -c:v copy -c:a copy -fflags +bitexact -map_metadata -1 -metadata title="{}" "{}"'.format(video_filepath, audio_filepath, video_title, output_path)
+            command = 'ffmpeg -nostdin -loglevel error -y -i "{}" -i "{}" -acodec copy -vcodec copy -fflags +bitexact -map_metadata -1 -metadata title="{}" "{}"'.format(
+                video_filepath, audio_filepath, video_title, output_path)
     else:
         if use_h265:
-            command = 'nice -n 7 ffmpeg {} -y -i "{}" -i "{}" -c:v libx265 -vtag hvc1 -crf {} -preset {} -c:a copy -fflags +bitexact -map_metadata -1 -metadata title="{}" "{}"'.format(
-                transcode, video_filepath, audio_filepath, codec, h265_crf, h265_preset, video_title, output_path
-            )
+            command = 'nice -n 7 ffmpeg {} -y -i "{}" -i "{}" -c:v {} -vtag hvc1 -crf {} -preset {} -c:a copy -fflags +bitexact -map_metadata -1 -metadata title="{}" "{}"'.format(
+                transcode, video_filepath, audio_filepath, codec, h265_crf, h265_preset, video_title, output_path)
         else:
-            command = 'nice -n 7 ffmpeg -y -i "{}" -i "{}" -c:v copy -c:a copy -fflags +bitexact -map_metadata -1 -metadata title="{}" "{}"'.format(
-                video_filepath, audio_filepath, video_title, output_path
-            )
+            command = 'nice -n 7 ffmpeg -nostdin -loglevel error -y -i "{}" -i "{}" -acodec copy -vcodec copy -fflags +bitexact -map_metadata -1 -metadata title="{}" "{}"'.format(
+                video_filepath, audio_filepath, video_title, output_path)
+
+    logger.debug("ffmpeg cmd:\n")
+    logger.debug(f"{command}")
 
     process = subprocess.Popen(command, shell=True)
     log_subprocess_output("FFMPEG-STDOUT", process.stdout)
@@ -1396,11 +1429,33 @@ def handle_segments(url, format_id, video_title, output_path, lecture_file_name,
     video_filepath_dec = lecture_file_name + ".decrypted.mp4"
     audio_filepath_dec = lecture_file_name + ".decrypted.m4a"
     logger.info("> Downloading Lecture Tracks...")
+    
+    # logger.debug("YDL_OPTIONS: " + str(YDL_OPTIONS))
+    
     args = [
         "yt-dlp",
         "--enable-file-urls",
-        "--force-generic-extractor",
+        "--quiet",  # "--no-quiet",
+        # "--verbose",
+        "--no-warnings",
+        "--add-headers", f'accept:{YDL_OPTIONS.get("http_headers", {}).get("Accept", None)}',
+        "--add-headers", f'accept-encoding:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Encoding", None)}',
+        "--add-headers", f'accept-language:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Language", None)}',
+        "--add-headers", f'cookie:{YDL_OPTIONS.get("http_headers", {}).get("Cookie", None)}',
+        #"--add-headers", f'referer:{YDL_OPTIONS.get("http_headers", {}).get("Referer")}',
+        "--add-headers", f'user-agent:{YDL_OPTIONS.get("http_headers", {}).get("User-Agent", None)}',
+        "--add-headers", f'sec-ch-ua:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua", None)}',
+        "--add-headers", f'sec-ch-ua-mobile:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua-Mobile", None)}',
+        "--add-headers", f'sec-ch-ua-platform:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua-Platform", None)}',
+        "--add-headers", f'sec-fetch-dest:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Dest", None)}',
+        "--add-headers", f'sec-fetch-mode:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Mode", None)}',
+        "--add-headers", f'sec-fetch-site:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Site", None)}',
+        "--cookies-from-browser",
+        "chrome",
+        "--use-extractors",
+        "generic",
         "--allow-unplayable-formats",
+        "--legacy-server-connect",
         "--concurrent-fragments",
         f"{concurrent_downloads}",
         "--downloader",
@@ -1414,6 +1469,9 @@ def handle_segments(url, format_id, video_title, output_path, lecture_file_name,
         format_id,
         f"{url}",
     ]
+    # logger.debug("yt-dlp command:\n")
+    # logger.debug(f"{args}")
+    # logger.debug(f"Downloading: {url}, with format ID: {format_id}")
     if disable_ipv6:
         args.append("--downloader-args")
         args.append('aria2c:"--disable-ipv6"')
@@ -1431,14 +1489,14 @@ def handle_segments(url, format_id, video_title, output_path, lecture_file_name,
         video_kid = extract_kid(video_filepath_enc)
         logger.info("KID for video file is: " + video_kid)
     except Exception:
-        logger.exception(f"Error extracting video kid")
+        logger.exception("Error extracting video kid")
         return
 
     try:
         audio_kid = extract_kid(audio_filepath_enc)
         logger.info("KID for audio file is: " + audio_kid)
     except Exception:
-        logger.exception(f"Error extracting audio kid")
+        logger.exception("Error extracting audio kid")
         return
 
     try:
@@ -1611,8 +1669,28 @@ def process_lecture(lecture, lecture_path, lecture_file_name, chapter_dir):
                         temp_filepath = lecture_path.replace(".mp4", ".%(ext)s")
                         cmd = [
                             "yt-dlp",
+                            "--quiet",  # "--no-quiet",
+                            # "--verbose",
+                            "--no-warnings",
                             "--enable-file-urls",
-                            "--force-generic-extractor",
+                            "--add-headers", f'accept:{YDL_OPTIONS.get("http_headers", {}).get("Accept", None)}',
+                            "--add-headers", f'accept-encoding:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Encoding", None)}',
+                            "--add-headers", f'accept-language:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Language", None)}',
+                            "--add-headers", f'cookie:{YDL_OPTIONS.get("http_headers", {}).get("Cookie", None)}',
+                            #"--add-headers", f'referer:{YDL_OPTIONS.get("http_headers", {}).get("Referer")}',
+                            "--add-headers", f'user-agent:{YDL_OPTIONS.get("http_headers", {}).get("User-Agent", None)}',
+                            "--add-headers", f'sec-ch-ua:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua", None)}',
+                            "--add-headers", f'sec-ch-ua-mobile:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua-Mobile", None)}',
+                            "--add-headers", f'sec-ch-ua-platform:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Ch-Ua-Platform", None)}',
+                            "--add-headers", f'sec-fetch-dest:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Dest", None)}',
+                            "--add-headers", f'sec-fetch-mode:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Mode", None)}',
+                            "--add-headers", f'sec-fetch-site:{YDL_OPTIONS.get("http_headers", {}).get("Sec-Fetch-Site", None)}',
+                            "--cookies-from-browser",
+                            "chrome",
+                            "--use-extractors",
+                            "generic",
+                            "--allow-unplayable-formats",
+                            "--legacy-server-connect",
                             "--concurrent-fragments",
                             f"{concurrent_downloads}",
                             "--downloader",
@@ -1629,9 +1707,9 @@ def process_lecture(lecture, lecture_path, lecture_file_name, chapter_dir):
                         log_subprocess_output("YTDLP-STDERR", process.stderr)
                         ret_code = process.wait()
                         if ret_code == 0:
-                            tmp_file_path = lecture_path + ".tmp"
                             logger.info("      > HLS Download success")
                             if use_h265:
+                                tmp_file_path = lecture_path + ".tmp"
                                 codec = "hevc_nvenc" if use_nvenc else "libx265"
                                 transcode = "-hwaccel cuda -hwaccel_output_format cuda".split(" ") if use_nvenc else []
                                 cmd = ["ffmpeg", *transcode, "-y", "-i", lecture_path, "-c:v", codec, "-c:a", "copy", "-f", "mp4", tmp_file_path]
@@ -1642,7 +1720,22 @@ def process_lecture(lecture, lecture_path, lecture_file_name, chapter_dir):
                                 if ret_code == 0:
                                     os.unlink(lecture_path)
                                     os.rename(tmp_file_path, lecture_path)
-                                    logger.info("      > Encoding complete")
+                                    logger.info("      > Encoding complete using H.265")
+                                else:
+                                    logger.error("      > Encoding returned non-zero return code")
+                            else:  #h264 is original for non-encrypted videos (as of May 2023)
+                                # This is needed because on Apple macOS, originally downloaded file doesn't have codec metadata info
+                                # and we just pass it through the ffmpeg to fix that. Ensures video can be played with any player, including QuickTime.
+                                tmp_file_path = lecture_path + ".tmp"
+                                cmd = ["ffmpeg", "-y", "-i", lecture_path, "-c:v", "copy", "-c:a", "copy", "-f", "mp4", tmp_file_path]
+                                process = subprocess.Popen(cmd)
+                                log_subprocess_output("FFMPEG-STDOUT", process.stdout)
+                                log_subprocess_output("FFMPEG-STDERR", process.stderr)
+                                ret_code = process.wait()
+                                if ret_code == 0:
+                                    os.unlink(lecture_path)
+                                    os.rename(tmp_file_path, lecture_path)
+                                    logger.info("      > Encoding complete using H.264")
                                 else:
                                     logger.error("      > Encoding returned non-zero return code")
                     else:
@@ -1690,7 +1783,7 @@ def process_coding_assignment(quiz, lecture, chapter_dir):
     lecture_path = os.path.join(chapter_dir, lecture_file_name)
 
     logger.info(f"  > Processing quiz {lecture_index} (coding assignment)")
-    
+
     with open("coding_assignment_template.html", "r") as f:
         html = f.read()
         quiz_data = {
@@ -1982,7 +2075,7 @@ def main():
             logger.info("> Processing course data, this may take a minute. ")
             lecture_counter = 0
             lectures = []
-            
+
             for entry in course:
                 clazz = entry.get("_class")
 
@@ -2037,7 +2130,7 @@ def main():
                         lectures.append({"index": lecture_counter, "lecture_index": lecture_index, "lecture_title": lecture_title, "_class": entry.get("_class"), "id": lecture_id, "data": entry})
                     else:
                         logger.debug("Quiz: ID is None, skipping")
-                
+
                 udemy_object["chapters"][chapter_index_counter]["lectures"] = lectures
                 udemy_object["chapters"][chapter_index_counter]["lecture_count"] = len(lectures)
 
