@@ -24,6 +24,7 @@ YDL_OPTIONS = {
     "quiet": True,
     "verbose": False,
     "no_warnings": True,
+    "enable_file_urls": True,
     "allow_unplayable_formats": True,
     "http_headers": {
         "Accept": "*/*",
@@ -31,13 +32,13 @@ YDL_OPTIONS = {
         'Accept-Language': 'en-US,en;q=0.9',
         'Cookie': '',
         # 'Referer': '',
-        'Sec-Ch-Ua': '"Google Chrome";v="113", "Chromium";v="113", "Not-A.Brand";v="24"',
+        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
         'Sec-Ch-Ua-Mobile': '?0',
         'Sec-Ch-Ua-Platform': 'macOS',
         'Sec-Fetch-Dest': 'empty',
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Site': 'same-origin',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     },
     "cookiesfrombrowser": ("chrome", ),
     "legacyserverconnect": True

@@ -61,43 +61,6 @@ browser = None
 cj = None
 use_continuous_lecture_numbers = False
 
-YDL_OPTIONS = {
-    "quiet": True,
-    'verbose': False,
-    "no_warnings": True,
-    "allow_unplayable_formats": True,
-    "http_headers": {
-        'accept':
-        '*/*',
-        'accept-encoding':
-        'gzip, deflate, br',
-        'accept-language':
-        'en-US,en;q=0.9',
-        'cookie':
-        '', # It gets set elsewhere when arguments are passed to the program
-        'dnt':
-        '1',
-        'referer':
-        'https://<BUSINESS_DOMAIN_REDACTED>.udemy.com/course/<PATH_TO_COURSE>/learn/lecture/<LECTURE_ID>',
-        'sec-ch-ua':
-        '"Google Chrome";v="113", "Chromium";v="113", "Not-A.Brand";v="24"',
-        'sec-ch-ua-mobile':
-        '?0',
-        'sec-ch-ua-platform':
-        'macOS',
-        'sec-fetch-dest':
-        'empty',
-        'sec-fetch-mode':
-        'cors',
-        'sec-fetch-site':
-        'same-origin',
-        'user-agent':
-        '<REDACTED>',
-    },
-    'cookiesfrombrowser': ('chrome', ),
-    'legacyserverconnect': True
-}
-
 
 # from https://stackoverflow.com/a/21978778/9785713
 def log_subprocess_output(prefix: str, pipe: IO[bytes]):
@@ -1709,6 +1672,7 @@ def process_lecture(lecture, lecture_path, lecture_file_name, chapter_dir):
                             "--quiet",  # "--no-quiet",
                             # "--verbose",
                             "--no-warnings",
+                            "--enable-file-urls",
                             "--add-headers", f'accept:{YDL_OPTIONS.get("http_headers", {}).get("Accept", None)}',
                             "--add-headers", f'accept-encoding:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Encoding", None)}',
                             "--add-headers", f'accept-language:{YDL_OPTIONS.get("http_headers", {}).get("Accept-Language", None)}',
