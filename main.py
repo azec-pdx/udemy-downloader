@@ -584,9 +584,13 @@ class Udemy:
         temp_path.mkdir(parents=True, exist_ok=True)
 
         # # extract the asset id from the url
-        asset_id = asset_id_re.search(url).group("id")
-
-        m3u8_path = Path(temp_path, f"index_{asset_id}.m3u8")
+        search = asset_id_re.search(url)
+        if search is not None and len(search.groups()) > 0:
+            asset_id = search.group("id")
+            m3u8_path = Path(temp_path, f"index_{asset_id}.m3u8")
+        else:
+            logger.error(f"Unable to parse the asset ID from m3u8 url: {url}")
+            return _temp
 
         try:
             r = self.session._get(url)
