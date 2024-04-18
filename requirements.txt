@@ -17,3 +17,4 @@ pathvalidate
 coloredlogs
 browser_cookie3
 click
+xmltodict

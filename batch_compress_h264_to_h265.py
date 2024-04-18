@@ -10,7 +10,7 @@ from tqdm import tqdm
 @click.option('--file-ext', help='File format to process')
 @click.option('--crf', default=28, help='CRF (Constant Rate Factor) for x265. Allowed values in range 0-51. For more info please see https://slhck.info/video/2017/02/24/crf-guide.html')
 @click.option('--quality', default=35, help='Video quality for hevc_videotoolbox encoder. Allowed values in range 0-100.')
-@click.option('--encoder', type=click.Choice(['libx265', 'hevc_videotoolbox', 'libsvtav1'], case_sensitive=False))
+@click.option('--encoder', type=click.Choice(['libx265', 'hevc_videotoolbox', 'libsvtav1', 'libaom-av1'], case_sensitive=False))
 def main(directory, file_ext='mp4', recursive=False, crf=28, quality=35, encoder='libsvtav1'):
     """ Compress h264 video files in a directory using libx265 codec with crf=28
     Args:
@@ -64,6 +64,8 @@ def main(directory, file_ext='mp4', recursive=False, crf=28, quality=35, encoder
         elif encoder == 'libsvtav1':
             # Best results with preset 10 and crf 35 by default.
             convert_cmd = f'ffmpeg -i "{fp}" -map_metadata 0 -c:v {encoder} -preset 10 -crf "{crf}" -pix_fmt yuv420p10le -svtav1-params tune=0 -c:a copy "{new_fp}"'
+        elif encoder == 'libaom-av1':
+            convert_cmd = f'ffmpeg -i "{fp}" -map_metadata 0 -c:v {encoder} -crf "{crf}" -pix_fmt yuv420p10le -c:a copy "{new_fp}"'
         conversion_return_code = call(convert_cmd, shell=True)
         if conversion_return_code == 0:
             call(f'touch -r "{fp}" "{new_fp}"', shell=True)
