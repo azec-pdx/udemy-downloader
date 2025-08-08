@@ -245,6 +245,38 @@ Users are encouraged to tune these settings based on their own needs for storage
 
 
 
+# Batch compress to H.265
+
+By default, unless explicitly specified downloads will not use H.265 encoding. This is good because 
+it leads to speeding things up in the entire processing pipeline and prevents expiration of
+sessions which would occur while waiting on `ffmpeg` to encode H.264 (default format) videos to H.265 (if H.265 enc. was used after each video lecture download).
+
+To allow better compression for offline storage, after course is downloaded in H.264, you can use below to bulk-process course videos to H.265:
+
+```sh
+python batch_compress_h264_to_h265.py --recursive \
+    --file-ext 'mp4' \
+    --encoder 'libx265' \
+    --crf 28 \
+    out_dir/<YOUR_COURSE_DIRECTORY>
+```
+
+# Batch compress to AV1
+
+In addition to H.265 encoding, `batch_compress_h264_to_h265.py` allows encoding into AV1 format.
+The balanced settings (decent compression in reasonable time) look like this:
+
+```sh
+python batch_compress_h264_to_h265.py --recursive \
+    --file-ext 'mp4' \
+    --encoder 'libsvtav1' \
+    --crf 35 \
+    out_dir/<YOUR_COURSE_DIRECTORY>
+```
+
+In order for this to work, encoder `libsvtav1' needs to be enabled in `ffmpeg`.
+Users are encouraged to tune these settings based on their own needs for storage/speed.
+
 # Support
 
 if you want help using the program, join my [Discord](https://discord.gg/tMzrSxQ) server or use [GitHub Issues](https://github.com/Puyodead1/udemy-downloader/issues)
